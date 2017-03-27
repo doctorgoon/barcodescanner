@@ -33,11 +33,12 @@ public class MainActivity extends AppCompatActivity {
     private TextView textView = null;
     private TextView textView2 = null;
     private TextView textView3 = null;
+    private TextView textView7 = null;
 
 
     private EditText serialText = null;
     private EditText statusText = null;
-
+    private EditText modelText = null;
 
     static final String ACTION_SCAN = "com.google.zxing.client.android.SCAN";
     private String serial_num = null;
@@ -54,17 +55,24 @@ public class MainActivity extends AppCompatActivity {
         btnDel = (Button) findViewById(R.id.btnDel);
         serialText = (EditText) findViewById(R.id.serialText);
         statusText = (EditText) findViewById(R.id.statusText);
+        modelText = (EditText) findViewById(R.id.modelText);
+        textView = (TextView) findViewById(R.id.textView);
+        textView2 = (TextView) findViewById(R.id.textView2);
+        textView3 = (TextView) findViewById(R.id.textView3);
+        textView7 = (TextView) findViewById(R.id.textView7);
 
-        /*textView.setVisibility(View.GONE);
-        textView2.setVisibility(View.GONE);
-        textView3.setVisibility(View.GONE);
+        textView.setVisibility(View.INVISIBLE);
+        textView2.setVisibility(View.INVISIBLE);
+        textView3.setVisibility(View.INVISIBLE);
+        textView7.setVisibility(View.INVISIBLE);
 
-        serialText.setVisibility(View.GONE);
-        statusText.setVisibility(View.GONE);*/
+        serialText.setVisibility(View.INVISIBLE);
+        statusText.setVisibility(View.INVISIBLE);
+        modelText.setVisibility(View.INVISIBLE);
 
-        btnStock.setVisibility(View.VISIBLE);
-        btnExp.setVisibility(View.VISIBLE);
-        btnDel.setVisibility(View.VISIBLE);
+        btnStock.setVisibility(View.INVISIBLE);
+        btnExp.setVisibility(View.INVISIBLE);
+        btnDel.setVisibility(View.INVISIBLE);
 
         btnScan.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -125,7 +133,18 @@ public class MainActivity extends AppCompatActivity {
 
                 serial_num = contents;
 
-                getInfoFromServer(serial_num);
+                /*Log.w("GET MODEL", getModel(serial_num));
+
+                if(getModel(serial_num).equals(null) ) {
+                    Toast toast8 = Toast.makeText(this, "Code barre non valide", Toast.LENGTH_LONG);
+                    toast8.show();
+                }
+                else { */
+                    getModel(serial_num);
+
+                    getInfoFromServer(serial_num);
+                //}
+
             } else {
                 System.out.print("ResultCode : " + resultCode);
             }
@@ -142,7 +161,7 @@ public class MainActivity extends AppCompatActivity {
 
         String response = "";
         try {
-            URL url = new URL("http://192.168.1.97/app/get");
+            URL url = new URL("http://192.168.1.15/app/get");
 
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setReadTimeout(15000);
@@ -163,6 +182,14 @@ public class MainActivity extends AppCompatActivity {
 
             if (responseCode == HttpsURLConnection.HTTP_OK) {
 
+                textView.setVisibility(View.VISIBLE);
+                textView2.setVisibility(View.VISIBLE);
+                textView3.setVisibility(View.VISIBLE);
+                textView7.setVisibility(View.VISIBLE);
+
+                serialText.setVisibility(View.VISIBLE);
+                statusText.setVisibility(View.VISIBLE);
+
                 String line;
                 BufferedReader br = new BufferedReader(new InputStreamReader(
                         conn.getInputStream()));
@@ -180,28 +207,22 @@ public class MainActivity extends AppCompatActivity {
                                 Log.e("Status", "0");
                                 serialText.setText(serial_num);
                                 statusText.setText("Inconnu");
-                                status = 0;
                                 btnStock.setVisibility(View.VISIBLE);
                                 btnExp.setVisibility(View.VISIBLE);
-                                btnDel.setVisibility(View.GONE);
                                 break;
                             case 1:
                                 Log.e("Status", "1");
                                 serialText.setText(serial_num);
                                 statusText.setText("En stock");
-                                btnStock.setVisibility(View.GONE);
                                 btnExp.setVisibility(View.VISIBLE);
                                 btnDel.setVisibility(View.VISIBLE);
-                                status = 1;
                                 break;
                             case 2:
                                 Log.e("Status", "2");
                                 serialText.setText(serial_num);
                                 statusText.setText("Expédié");
                                 btnStock.setVisibility(View.VISIBLE);
-                                btnExp.setVisibility(View.GONE);
                                 btnDel.setVisibility(View.VISIBLE);
-                                status = 2;
                                 break;
                             default:
                                 serialText.setText(serial_num);
@@ -243,7 +264,7 @@ public class MainActivity extends AppCompatActivity {
 
         String response = "";
         try {
-            URL url = new URL("http://192.168.1.97/app/set");
+            URL url = new URL("http://192.168.1.15/app/set");
 
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setReadTimeout(15000);
@@ -278,25 +299,32 @@ public class MainActivity extends AppCompatActivity {
                     if (json.has("success") && json.optInt("success") > 0) {
                         int success = json.getInt("success");
                         switch (success) {
-                            case 1:
-                                Log.e("Success", "1");
-                                Toast toast1 = Toast.makeText(this, "Article ajouté avec succès", Toast.LENGTH_LONG);
-                                toast1.show();
-                                break;
                             case 2:
                                 Log.e("Success", "2");
                                 Toast toast2 = Toast.makeText(this, "Article marqué en stock", Toast.LENGTH_LONG);
                                 toast2.show();
+                                statusText.setText("En stock");
+                                btnStock.setVisibility(View.INVISIBLE);
+                                btnDel.setVisibility(View.VISIBLE);
+                                btnExp.setVisibility(View.VISIBLE);
                                 break;
                             case 3:
                                 Log.e("Success", "3");
                                 Toast toast3 = Toast.makeText(this, "Article marqué expédié", Toast.LENGTH_LONG);
                                 toast3.show();
+                                statusText.setText("Expédié");
+                                btnDel.setVisibility(View.VISIBLE);
+                                btnStock.setVisibility(View.VISIBLE);
+                                btnExp.setVisibility(View.INVISIBLE);
                                 break;
                             case 4:
                                 Log.e("Success", "4");
                                 Toast toast4 = Toast.makeText(this, "Article supprimé", Toast.LENGTH_LONG);
                                 toast4.show();
+                                statusText.setText("Inconnu");
+                                btnStock.setVisibility(View.VISIBLE);
+                                btnDel.setVisibility(View.INVISIBLE);
+                                btnExp.setVisibility(View.VISIBLE);
                                 break;
                             default:
                                 Toast toast5 = Toast.makeText(this, "Echec", Toast.LENGTH_LONG);
@@ -330,5 +358,36 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    public String getModel(String serial_num) {
+
+        String model = null;
+        String spirometre = "A23-";
+        String spirotel = "A23-X";
+        String spirobankII = "A23-0Y";
+        String spirodoc = "A23-0W";
+
+        String subSerial = serial_num.substring(0,5);
+        String subSubSerial = serial_num.substring(0,4);
+
+        if (subSerial.equals(spirotel)){
+            model =  "Spirotel";
+        }
+        else if (subSerial.equals(spirobankII)){
+            model =  "Spirobank II";
+        }
+        else if (subSerial.equals(spirodoc)){
+            model =  "Spirodoc";
+        }
+        else {
+            if (subSubSerial.equals(spirometre)) {
+                model = "Inconnu";
+            }
+        }
+
+        modelText.setVisibility(View.VISIBLE);
+        modelText.setText(model);
+
+        return model;
+    }
 
 }
