@@ -1,6 +1,8 @@
 package jeremy.mirfrance.com.barcodescanner;
 
+import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.StrictMode;
@@ -25,10 +27,14 @@ import javax.net.ssl.HttpsURLConnection;
 
 public class MainActivity extends AppCompatActivity {
 
+    private String ip = "jeremyavid.com";
+
     private Button btnScan = null;
     private Button btnStock = null;
     private Button btnExp = null;
     private Button btnDel = null;
+    private Button settings = null;
+
 
     private TextView textView = null;
     private TextView textView2 = null;
@@ -42,17 +48,20 @@ public class MainActivity extends AppCompatActivity {
 
     static final String ACTION_SCAN = "com.google.zxing.client.android.SCAN";
     private String serial_num = null;
-    private String status = null;
+    private String isSerial = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main);
 
         btnScan = (Button) findViewById(R.id.btnScan);
         btnStock = (Button) findViewById(R.id.btnStock);
         btnExp = (Button) findViewById(R.id.btnExp);
         btnDel = (Button) findViewById(R.id.btnDel);
+        settings = (Button) findViewById(R.id.settings);
+
         serialText = (EditText) findViewById(R.id.serialText);
         statusText = (EditText) findViewById(R.id.statusText);
         modelText = (EditText) findViewById(R.id.modelText);
@@ -73,7 +82,14 @@ public class MainActivity extends AppCompatActivity {
         btnStock.setVisibility(View.INVISIBLE);
         btnExp.setVisibility(View.INVISIBLE);
         btnDel.setVisibility(View.INVISIBLE);
+        settings.setVisibility(View.VISIBLE);
 
+        settings.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showSettings();
+            }
+        });
         btnScan.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -101,13 +117,54 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void showSettings() {
+        AlertDialog.Builder alert = new AlertDialog.Builder(this);
 
+        alert.setTitle("Réglage");
+        alert.setMessage("Définir l'adresse du serveur");
+
+        // Set an EditText view to get user input
+        final EditText input = new EditText(this);
+        alert.setView(input);
+        input.setText(ip);
+
+        alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int whichButton) {
+                ip = String.valueOf(input.getText());
+                dialog.dismiss();
+            }
+        });
+        alert.setNegativeButton("Annuler", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int whichButton) {
+                dialog.dismiss();
+            }
+        });
+
+        AlertDialog alertDialog =  alert.create();
+        alertDialog.show();
+    }
+
+    // start new activity
     private void scanBar() {
         try {
+            textView.setVisibility(View.INVISIBLE);
+            textView2.setVisibility(View.INVISIBLE);
+            textView3.setVisibility(View.INVISIBLE);
+            textView7.setVisibility(View.INVISIBLE);
+
+            serialText.setVisibility(View.INVISIBLE);
+            statusText.setVisibility(View.INVISIBLE);
+            modelText.setVisibility(View.INVISIBLE);
+
+            btnStock.setVisibility(View.INVISIBLE);
+            btnExp.setVisibility(View.INVISIBLE);
+            btnDel.setVisibility(View.INVISIBLE);
+
             //start the scanning activity from the com.google.zxing.client.android.SCAN intent
             Intent intent = new Intent(ACTION_SCAN);
             intent.putExtra("SCAN_MODE", "COD_128");
             startActivityForResult(intent, 0);
+
         } catch (ActivityNotFoundException anfe) {
 
             Uri uri = Uri.parse("market://search?q=pname:" + "com.google.zxing.client.android");
@@ -125,25 +182,24 @@ public class MainActivity extends AppCompatActivity {
     public void onActivityResult(int requestCode, int resultCode, Intent intent) {
         if (requestCode == 0) {
             if (resultCode == RESULT_OK) {
-                //get the extras that are returned from the intent
                 String contents = intent.getStringExtra("SCAN_RESULT");
                 String format = intent.getStringExtra("SCAN_RESULT_FORMAT");
-                Toast toast = Toast.makeText(this, "Content:" + contents + " Format:" + format, Toast.LENGTH_LONG);
-                toast.show();
+                //Toast toast = Toast.makeText(this, "Content:" + contents + " Format:" + format, Toast.LENGTH_LONG);
+                //toast.show();
 
                 serial_num = contents;
 
-                /*Log.w("GET MODEL", getModel(serial_num));
+                isSerial = getModel(serial_num);
 
-                if(getModel(serial_num).equals(null) ) {
+                Log.w("GET MODEL", isSerial);
+
+                if(isSerial.equals("Erreur")) {
                     Toast toast8 = Toast.makeText(this, "Code barre non valide", Toast.LENGTH_LONG);
                     toast8.show();
                 }
-                else { */
-                    getModel(serial_num);
-
+                else {
                     getInfoFromServer(serial_num);
-                //}
+                }
 
             } else {
                 System.out.print("ResultCode : " + resultCode);
@@ -153,15 +209,20 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    //
+
+    //get informations of the article from the server
     public void getInfoFromServer(String serial_num) {
 
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
 
         String response = "";
+
+        System.out.print("ADresse IP : " + ip);
+
+
         try {
-            URL url = new URL("http://192.168.1.15/app/get");
+            URL url = new URL("http://"  + ip + "/app/get");
 
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setReadTimeout(15000);
@@ -189,6 +250,9 @@ public class MainActivity extends AppCompatActivity {
 
                 serialText.setVisibility(View.VISIBLE);
                 statusText.setVisibility(View.VISIBLE);
+
+                modelText.setVisibility(View.VISIBLE);
+                modelText.setText(isSerial);
 
                 String line;
                 BufferedReader br = new BufferedReader(new InputStreamReader(
@@ -252,11 +316,14 @@ public class MainActivity extends AppCompatActivity {
 
         } catch (Exception e) {
             e.printStackTrace();
+            Toast toast10 = Toast.makeText(this, "Erreur réseau, vérifier votre connexion", Toast.LENGTH_LONG);
+            toast10.show();
         }
 
     }
 
 
+    //send c
     public void sendInfoToServer(String serial_num, int i) {
 
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
@@ -264,7 +331,7 @@ public class MainActivity extends AppCompatActivity {
 
         String response = "";
         try {
-            URL url = new URL("http://192.168.1.15/app/set");
+            URL url = new URL("http://" + ip + "/app/set");
 
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setReadTimeout(15000);
@@ -360,32 +427,30 @@ public class MainActivity extends AppCompatActivity {
 
     public String getModel(String serial_num) {
 
-        String model = null;
+        String model = "Erreur";
         String spirometre = "A23-";
         String spirotel = "A23-X";
         String spirobankII = "A23-0Y";
         String spirodoc = "A23-0W";
 
-        String subSerial = serial_num.substring(0,5);
+        String subSpirotel = serial_num.substring(0,5);
+        String subSpirometer = serial_num.substring(0,6);
         String subSubSerial = serial_num.substring(0,4);
 
-        if (subSerial.equals(spirotel)){
+        if (subSpirotel.equals(spirotel)){
             model =  "Spirotel";
         }
-        else if (subSerial.equals(spirobankII)){
-            model =  "Spirobank II";
-        }
-        else if (subSerial.equals(spirodoc)){
-            model =  "Spirodoc";
-        }
         else {
-            if (subSubSerial.equals(spirometre)) {
+            if (subSpirometer.equals(spirobankII)){
+                model =  "Spirobank II";
+            }
+            else if (subSpirometer.equals(spirodoc)){
+                model =  "Spirodoc";
+            }
+            else if (subSubSerial.equals(spirometre)) {
                 model = "Inconnu";
             }
         }
-
-        modelText.setVisibility(View.VISIBLE);
-        modelText.setText(model);
 
         return model;
     }
